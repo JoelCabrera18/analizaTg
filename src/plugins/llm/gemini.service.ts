@@ -14,6 +14,9 @@ export class GeminiService implements LlmService {
       model,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
     });
-    return response.text || "";
+
+    const { text: llmResponse } = response;
+    if (!llmResponse) throw new Error("No se pudo generar el contenido");
+    return llmResponse;
   }
 }
