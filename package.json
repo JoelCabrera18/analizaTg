@@ -18,6 +18,7 @@
     "typescript": "6.0.3"
   },
   "dependencies": {
+    "@google/genai": "1.52.0",
     "telegram": "2.26.22"
   }
 }
