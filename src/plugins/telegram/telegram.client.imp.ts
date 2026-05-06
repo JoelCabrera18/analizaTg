@@ -7,6 +7,8 @@ import input from "input";
 import { CustomTelegramClient } from "./custom.telegram.client";
 import { TelegramClientProperties } from "./telegram.client.properties";
 import { LlmService } from "../llm/llm.service";
+import { promises as fs } from "fs";
+import path from "path";
 
 export class TelegramClientImp extends CustomTelegramClient {
   private client: TelegramClient;
@@ -15,7 +17,8 @@ export class TelegramClientImp extends CustomTelegramClient {
 
   private constructor(
     public readonly props: TelegramClientProperties,
-    private readonly geminiService: LlmService,
+    private readonly qwenService: LlmService,
+    private readonly systemPrompt: string,
   ) {
     super();
     const stringSession = new StringSession(props.session);
@@ -27,9 +30,14 @@ export class TelegramClientImp extends CustomTelegramClient {
     });
   }
 
-  public static async create(props: TelegramClientProperties, geminiService: LlmService): Promise<TelegramClientImp> {
+  public static async create(props: TelegramClientProperties, qwenService: LlmService): Promise<TelegramClientImp> {
     const { session } = props;
-    const instance = new TelegramClientImp(props, geminiService);
+
+    // Cargar el prompt desde el archivo txt
+    const promptPath = path.join(process.cwd(), "src", "prompts", "job-analysis.txt");
+    const systemPrompt = await fs.readFile(promptPath, "utf-8");
+
+    const instance = new TelegramClientImp(props, qwenService, systemPrompt);
 
     if (session) {
       await instance.client.connect();
@@ -62,15 +70,18 @@ export class TelegramClientImp extends CustomTelegramClient {
   public async listenNewMessagesFromChannel(channel: string[]): Promise<void> {
     this.client.addEventHandler(
       async (event: NewMessageEvent) => {
+        console.log("Analizando mensaje....");
         const message = event.message;
 
-        const prompt = `
-        Analiza el siguiente mensaje y si es una oportunidad de trabajo para un desarrollador web SEMI SENIOR, 
-        responde con un mensaje de telegram en formato:
-        ${message?.text}`;
+        const userPrompt = `Analiza este mensaje de Telegram: "${message?.text}"`;
         try {
-          await this.geminiService.generateContent(prompt);
-          // enviar a la UI el la postulacion de interes
+          const llmResponse = await this.qwenService.generateContent(userPrompt, this.systemPrompt);
+
+          if (llmResponse !== "IGNORAR") {
+            console.log("--- OPORTUNIDAD DETECTADA ---");
+            console.log(llmResponse);
+            console.log("----------------------------");
+          }
         } catch (error) {
           console.log(error);
         }

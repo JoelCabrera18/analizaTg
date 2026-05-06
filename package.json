@@ -21,7 +21,7 @@
   },
   "dependencies": {
     "@google/genai": "1.52.0",
-    "install": "^0.13.0",
+    "@huggingface/inference": "4.13.15",
     "telegram": "2.26.22"
   }
 }
